@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quantbox-engine"
+version = "0.1.0"
+description = "Strategy-agnostic crypto-futures backtest & execution engine (no-look-ahead, backtest/live parity)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+keywords = ["quant", "backtest", "trading", "binance", "futures", "execution"]
+authors = [{ name = "Younghwan Chae", email = "chyohw97@gmail.com" }]
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+# Live execution talks to Binance USDT-M Futures; not needed for backtests.
+live = ["python-binance>=1.0.29"]
+dev = ["pytest>=8.0", "ruff>=0.6", "python-binance>=1.0.29"]
+
+[project.scripts]
+qbe-backtest = "engine.backtest.vectorized:main"
+
+[project.urls]
+Repository = "https://github.com/younghwan91/quantbox-engine"
+
+[tool.hatch.build.targets.wheel]
+packages = ["engine"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

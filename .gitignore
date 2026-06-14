@@ -1,0 +1,21 @@
+# 비밀키 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 데이터 산출물
+data/*.csv
+*.db
