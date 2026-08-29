@@ -1,5 +1,8 @@
 # QuantBox Engine ⚙️
 
+[![CI](https://github.com/younghwan91/quantbox-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/younghwan91/quantbox-engine/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-younghwan--chae-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/younghwan-chae/)
 
 **전략에 종속되지 않는 암호화폐 선물 백테스트·실행 엔진.** 백테스트와 실거래가 같은 코드를 타고, 룩어헤드(미래 데이터 참조)가 구조적으로 끼어들 수 없게 짰다.
