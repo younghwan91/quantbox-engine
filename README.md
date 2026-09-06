@@ -11,6 +11,8 @@
 
 ## 빠른 시작
 
+필요한 건 Python 3.10+ 와 [uv](https://docs.astral.sh/uv/) 뿐이다. 백테스트는 `numpy` + `pandas` 만으로 돌아가고, 거래소에 실제 주문을 태울 때만 `python-binance` 가 더 필요하다(`.[live]`).
+
 ```bash
 uv venv && uv pip install -e ".[dev]"
 
@@ -22,7 +24,22 @@ uv run pytest -q                # 테스트 (네트워크·API 키 불필요)
 
 > ⚠️ 위 숫자는 **합성 데이터에 데모 전략을 돌린 결과**다. 엔진이 돈다는 것만 보여줄 뿐 수익성과 무관하다.
 
-백테스트는 `numpy` + `pandas` 만으로 돈다. 거래소에 실제 주문을 태울 때만 `python-binance` 가 더 필요하다(`.[live]`).
+## 내 데이터·전략으로 써보기
+
+`high/low/close` 배열만 있으면 실제 백테스트가 돌아간다.
+
+```python
+from engine.backtest.vectorized import run_backtest
+from engine.data.klines import load_csv
+from engine.strategy.demo_squeeze import SqueezeStrategy
+
+high, low, close = load_csv("BTCUSDT_1h.csv")   # 컬럼: high,low,close
+result = run_backtest(SqueezeStrategy(), high, low, close, fee=0.0004, slippage=0.0002)
+print(result.summary())
+# {'n_trades': ..., 'total_return': ..., 'win_rate': ..., 'profit_factor': ..., 'max_drawdown': ...}
+```
+
+내 전략을 붙이려면 [`TradingStrategy`](engine/strategy/protocol.py) 프로토콜(상속 불필요, 메서드만 맞추면 됨)만 구현하면 된다 — 방법과 라이브 실행까지는 [docs/USAGE.md](docs/USAGE.md) 참고.
 
 ## 핵심 설계
 
@@ -36,7 +53,7 @@ uv run pytest -q                # 테스트 (네트워크·API 키 불필요)
 
 ## 구조
 
-**결정 / 측정 / 실행** 을 갈라놓고 셋은 `TradingStrategy` 하나로만 맞물린다. 전략은 봉 데이터를 받아 시그널(`-1`/`0`/`+1`)을 내고 자기 포지션의 청산 조건만 관리한다 — 엔진 내부는 모른다.
+**결정(전략) / 측정(백테스트) / 실행** 을 갈라놓고 셋은 `TradingStrategy` 하나로만 맞물린다.
 
 ```mermaid
 flowchart LR
@@ -75,42 +92,15 @@ flowchart LR
     ALGO --> BINANCE[("Binance USDT-M\nFutures Algo Order API")]
 ```
 
-CLI(`qbe-backtest --demo`)는 `data`(합성 또는 CSV) → `backtest`(룩어헤드 차단 루프) → `strategy`(시그널·청산 결정) 를 왕복하며 `BacktestResult` 를 낸다. 라이브 경로는 같은 `TradingStrategy` 객체를 `execution` 레이어(브래킷 주문 → Binance Algo API)가 그대로 이어받아 구동한다.
-
-- 내 전략 붙이는 법·실데이터 백테스트·라이브 실행 → [docs/USAGE.md](docs/USAGE.md)
+- 전략 붙이는 법·라이브 실행까지 자세히 → [docs/USAGE.md](docs/USAGE.md)
 - 룩어헤드 차단·실거래 일체화·비용 모델의 설계 근거 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 라이선스
 
 MIT
 
-
 ---
 
-## ⭐ 도움이 되셨다면
+버그·질문은 [Issues](https://github.com/younghwan91/quantbox-engine/issues)로.
 
-이 프로젝트가 유용했다면 우측 상단 **[⭐ Star](https://github.com/younghwan91/quantbox-engine)** 를 눌러주세요. 검색·추천 노출이 올라가 더 많은 분들이 찾을 수 있습니다.
-
-- 🐛 버그·질문 → [Issues](https://github.com/younghwan91/quantbox-engine/issues)
-- 📈 업데이트 소식 → [팔로우 @younghwan91](https://github.com/younghwan91)
-
-## 관련 프로젝트 — 오픈소스 퀀트 스택
-
-한국·미국 주식과 암호화폐를 아우르는 오픈소스 스택입니다. 각 저장소는 독립적으로 쓸 수 있습니다.
-
-| 축 | 프로젝트 | 설명 |
-|---|---|---|
-| 🇰🇷 한국 주식 | **[kiwoom-client](https://github.com/younghwan91/kiwoom-client)** | 키움증권 REST API Python 라이브러리 — 국내주식 엔드포인트 전수·실시간 WebSocket, sync + async (`pip install kiwoom-client`) |
-| 🇰🇷 한국 주식 | **[krx-fundamentals-client](https://github.com/younghwan91/krx-fundamentals-client)** | 국내 기업 펀더멘탈 Python 클라이언트 라이브러리 — 재무제표·투자지표·배당·종목 스크리닝 (DART + KRX + 네이버) |
-| 🇰🇷 한국 주식 | **[krx-news-client](https://github.com/younghwan91/krx-news-client)** | 한국 주식 뉴스·공시 수집 Python 클라이언트 라이브러리 (DART + 한국경제 + 더벨 + 토스) |
-| 🇰🇷 한국 주식 | **[fin-checkup](https://github.com/younghwan91/fin-checkup)** | 관심종목 위험 공시 텔레그램 알림 + DART·SEC 재무 건강검진 — 측정값과 사실만 전달한다 |
-| 🇰🇷 한국 주식 | **[quant-airflow](https://github.com/younghwan91/quant-airflow)** | 시세·수급·실적을 TimescaleDB 로 수집하는 Airflow 파이프라인 — 상장폐지 종목까지 담아 생존편향을 막는다 |
-| 🇰🇷 한국 주식 | **[kr-quant](https://github.com/younghwan91/kr-quant)** | 코스피·코스닥 알파 리서치 — walk-forward·랜덤 음성대조·purged CV·Deflated Sharpe 를 CI 가드레일로 강제 |
-| 🇺🇸 미국 주식 | **[portfolio-research](https://github.com/younghwan91/portfolio-research)** | 미국주식 팩터 엔진 — point-in-time·생존편향 보정 데이터 위에서 walk-forward 를 Deflated Sharpe·PBO 로 게이팅 (+ ETF 전술배분 TAA — 9개 사전등록, 채택 0) |
-| 🇺🇸 미국 주식 | **[automated-stock-trading-systems](https://github.com/younghwan91/automated-stock-trading-systems)** | Bensdorp 의 7개 비상관 트레이딩 시스템 백테스터 (교육용 재구현) |
-
-## 만든 사람
-
-**채영환 (Younghwan Chae)** · [GitHub @younghwan91](https://github.com/younghwan91) · [LinkedIn](https://www.linkedin.com/in/younghwan-chae/)
-
-전체 오픈소스 퀀트 스택은 [프로필](https://github.com/younghwan91)에서 한눈에 볼 수 있습니다.
+**채영환 (Younghwan Chae)** · [GitHub @younghwan91](https://github.com/younghwan91) · [LinkedIn](https://www.linkedin.com/in/younghwan-chae/) — 다른 오픈소스 퀀트 프로젝트(한국·미국 주식, 암호화폐)는 [프로필](https://github.com/younghwan91)에서 볼 수 있습니다.
