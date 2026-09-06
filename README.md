@@ -36,15 +36,46 @@ uv run pytest -q                # 테스트 (네트워크·API 키 불필요)
 
 ## 구조
 
-```
-engine/
-├── strategy/     # 결정 — TradingStrategy 인터페이스 + 데모 전략(볼린저 스퀴즈)
-├── backtest/     # 측정 — 봉 단위 백테스터 + 성과 지표 (룩어헤드 차단 지점)
-├── data/         # OHLCV CSV 로더 · 합성 데이터 생성기 · 메모리+gzip 캐시
-└── execution/    # 실행 — 서버사이드 브래킷, 바이낸스 Algo Order REST 래퍼 (.[live])
+**결정 / 측정 / 실행** 을 갈라놓고 셋은 `TradingStrategy` 하나로만 맞물린다. 전략은 봉 데이터를 받아 시그널(`-1`/`0`/`+1`)을 내고 자기 포지션의 청산 조건만 관리한다 — 엔진 내부는 모른다.
+
+```mermaid
+flowchart LR
+    subgraph Data["engine/data/"]
+        CSV[("OHLCV CSV\nload_csv()")]
+        SYN[["synth_ohlcv()\n합성 데이터"]]
+        CACHE["cache.py\n메모리+gzip 캐시"]
+    end
+
+    subgraph Decide["engine/strategy/ — 결정"]
+        PROTO{{"TradingStrategy\n(PEP 544 프로토콜)"}}
+        SQZ["demo_squeeze.py\nSqueezeStrategy"]
+        PROTO -.구현.-> SQZ
+    end
+
+    CSV --> BT
+    SYN --> BT
+    CACHE -.캐시.-> CSV
+
+    subgraph Measure["engine/backtest/ — 측정"]
+        BT["vectorized.run_backtest()\n매 봉 close[:t+1]만 전달\n(룩어헤드 차단)"]
+        RES["BacktestResult\ntrades · equity curve · MDD"]
+        BT --> RES
+    end
+
+    BT <-->|"update_market_data / on_bar\nopen·update·close_position"| PROTO
+
+    subgraph Execute["engine/execution/ — 실행 (.[live])"]
+        HOST["host.py\nScalperProtocol (라이브 봇 host)"]
+        BRACKET["brackets.py\nBracketMixin — SL/TP/트레일링"]
+        ALGO["algo_api.py\nAlgoApiClient"]
+        HOST --> BRACKET --> ALGO
+    end
+
+    PROTO ==같은 인터페이스\n(백테스트=실거래)==> HOST
+    ALGO --> BINANCE[("Binance USDT-M\nFutures Algo Order API")]
 ```
 
-**결정 / 측정 / 실행** 을 갈라놓고 셋은 `TradingStrategy` 하나로만 맞물린다. 전략은 봉 데이터를 받아 시그널(`-1`/`0`/`+1`)을 내고 자기 포지션의 청산 조건만 관리한다 — 엔진 내부는 모른다.
+CLI(`qbe-backtest --demo`)는 `data`(합성 또는 CSV) → `backtest`(룩어헤드 차단 루프) → `strategy`(시그널·청산 결정) 를 왕복하며 `BacktestResult` 를 낸다. 라이브 경로는 같은 `TradingStrategy` 객체를 `execution` 레이어(브래킷 주문 → Binance Algo API)가 그대로 이어받아 구동한다.
 
 - 내 전략 붙이는 법·실데이터 백테스트·라이브 실행 → [docs/USAGE.md](docs/USAGE.md)
 - 룩어헤드 차단·실거래 일체화·비용 모델의 설계 근거 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
